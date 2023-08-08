@@ -4,7 +4,7 @@ mod util;
 
 use crate::layout::{LayoutData, ROOM_TYPES};
 use crate::util::{array3_shape_from_image_layout, image_to_array3};
-use image::RgbImage;
+use image::{Rgb, RgbImage};
 use ndarray::{array, azip, concatenate, s, stack, Array, Array1, Array2, Array3, ArrayBase, ArrayView, Axis, Dimension, IntoNdProducer, NdProducer, NewAxis, OwnedRepr, RawData, ViewRepr, Zip, ArrayView2};
 use ndarray_stats::QuantileExt;
 use polyfit_rs::polyfit_rs::polyfit;
@@ -328,10 +328,27 @@ fn get_lsun_res() {
         resolution: im_res,
     };
 
-    let tmp = get_segmentation(data);
+    let lines = get_segmentation(data);
+    println!("lines: {lines:?}");
+
+    let mut lineplot = RgbImage::from_pixel(
+        im_res.0 as u32,
+        im_res.1 as u32,
+        Rgb::from([0, 0, 0])
+    );
+
+    for ((x1, y1), (x2, y2)) in lines.iter() {
+        imageproc::drawing::draw_line_segment_mut(
+            &mut lineplot,
+            (*x1 as f32, *y1 as f32),
+            (*x2 as f32, *y2 as f32),
+            Rgb::from([255, 0, 0])
+        );
+    }
+    lineplot.save("./out/lineplot.png").unwrap();
 }
 
-fn get_segmentation(data: LayoutData) {
+fn get_segmentation(data: LayoutData) -> Vec<((i32, i32), (i32, i32))> {
     if data.type_ == 11 {
         todo!("Return None");
     }
@@ -345,21 +362,65 @@ fn get_segmentation(data: LayoutData) {
     let point = point.mapv(|x| x as i32);
     println!("point: {point:?}");
 
-    let pt1s = point.select(
+    let line_indices = lines.clone().mapv_into(|x| x - 1);
+    let line_point_indices = line_indices
+        .slice(s![.., 0])
+        .to_owned();
+    let mut pt1s = point.select(
         Axis(0),
-        lines.mapv(|x| x - 1)
-            .slice(s![.., 0])
-            .to_owned()
-            .as_slice()
-            .unwrap(),
+        line_point_indices.as_slice().unwrap(),
     );
     println!("lines: {lines:?}");
+
+    pt1s.mapv_inplace(|p| {
+        if p < 0 {
+            0
+        } else {
+            p
+        }
+    });
+    // TODO: check if it is really x, not y
+    let res_x = data.resolution.0 as i32;
+    pt1s.slice_mut(s![.., 0]).mapv_inplace(|x| {
+        // TODO: do we need to clamp to [0; max_size -1] or [1; max_size] as in Python?
+        x.clamp(0, res_x - 1)
+    });
+    let res_y = data.resolution.1 as i32;
+    pt1s.slice_mut(s![.., 1]).mapv_inplace(|y| {
+        y.clamp(0, res_y - 1)
+    });
     println!("pt1s: {pt1s:?}");
 
-    // TODO:
-    // pt1s[pt1s <= 0] = 1
-    // pt1s[pt1s[:, 0] > data['resolution'][0], 0] = data['resolution'][0]
-    // pt1s[pt1s[:, 1] > data['resolution'][1], 1] = data['resolution'][1]
+    let line_point_indices = line_indices
+        .slice(s![.., 1])
+        .to_owned();
+    let mut pt2s = point.select(
+        Axis(0),
+        line_point_indices.as_slice().unwrap(),
+    );
+    pt2s.slice_mut(s![.., 0]).mapv_inplace(|x| {
+        x.clamp(0, res_x - 1)
+    });
+    pt2s.slice_mut(s![.., 1]).mapv_inplace(|y| {
+        y.clamp(0, res_y - 1)
+    });
+    println!("pt2s: {pt2s:?}");
+
+    let num_lines = pt1s.shape()[0];
+    let mut line_coords = vec![];
+    for i in 0..num_lines {
+        let p1 = (
+            pt1s[(i, 0)],
+            pt1s[(i, 1)],
+        );
+        let p2 = (
+            pt2s[(i, 0)],
+            pt2s[(i, 1)],
+        );
+        line_coords.push((p1, p2));
+    }
+
+    line_coords
 }
 
 fn pad_zeros(array: &mut Array2<f32>) {

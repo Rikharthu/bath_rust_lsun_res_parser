@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 image = { version = "0.24.5", default-features = false, features = ["jpeg", "png", "bmp"] }
+imageproc = "0.23.0"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
 once_cell = "1.18.0"
