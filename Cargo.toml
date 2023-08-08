@@ -11,7 +11,8 @@ ndarray-stats = "0.5.1"
 once_cell = "1.18.0"
 polyfit-rs = "0.2.1"
 thiserror = "1.0.44"
+# TODO: remove this when not needed anymore
+ndarray-npy = "0.8.1"
 
 [dev-dependencies]
 matfile = "0.4.0"
-ndarray-npy = "0.8.1"
