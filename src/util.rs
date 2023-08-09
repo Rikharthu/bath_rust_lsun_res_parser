@@ -1,6 +1,6 @@
 use crate::error::ParseError;
 use image::flat::SampleLayout;
-use image::{ImageBuffer, Pixel};
+use image::{GrayImage, ImageBuffer, Pixel};
 use ndarray::{Array3, Dim, Ix, ShapeBuilder, StrideShape};
 
 pub fn image_to_array3<P: Pixel>(

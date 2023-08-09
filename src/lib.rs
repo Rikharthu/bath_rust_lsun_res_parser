@@ -4,7 +4,7 @@ mod util;
 
 use crate::layout::{LayoutData, ROOM_TYPES};
 use crate::util::image_to_array3;
-use image::{Rgb, RgbImage};
+use image::{Rgb, RgbImage, GrayImage};
 use ndarray::{
     array, concatenate, s, Array, Array1, Array2, Array3, ArrayBase, ArrayView2, Axis, Dimension,
     NewAxis, OwnedRepr, RawData, Zip,
@@ -15,6 +15,8 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 fn get_lsun_res() {
+    // let i = 100;
+    // let i = 12;
     let i = 131;
 
     let im_h = 512usize;
@@ -43,7 +45,7 @@ fn get_lsun_res() {
     assert_eq!(edg.height(), im_h as u32);
 
     let samples = edg.as_flat_samples();
-    println!("Layoгt: {:?}", samples.layout);
+    println!("Layout: {:?}", samples.layout);
     // let im = Array3::from_shape_vec((im_h, im_w, 3), im.to_vec()).unwrap();
     // let edg = Array3::from_shape_vec((im_h, im_w, 3), edg.to_vec()).unwrap();
     //
@@ -60,12 +62,26 @@ fn get_lsun_res() {
     let mut corn = corn.permuted_axes([1, 2, 0]); // CHW -> HWC
     println!("corn shape: {:?}", corn.shape());
 
+    // for i in 0..8 {
+    //     let corn = corn.slice(s![.., .., i]).to_owned();
+    //     let corn = corn.mapv(|f| (f * 255.) as u8);
+    //     let corn_image = GrayImage::from_vec(512, 512, corn.into_raw_vec()).unwrap();
+    //     corn_image.save(format!("./out/corn_{i}.png")).unwrap();
+    // }
+
     let corn_f: Array3<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_flip_{i}.npy"
     ))
     .unwrap();
     let mut corn_f = corn_f.permuted_axes([1, 2, 0]); // CHW -> HWC
     println!("corn_f shape: {:?}", corn_f.shape());
+
+    // for i in 0..8 {
+    //     let corn_f = corn_f.slice(s![.., .., i]).to_owned();
+    //     let corn_f = corn_f.mapv(|f| (f * 255.) as u8);
+    //     let corn_f_image = GrayImage::from_vec(512, 512, corn_f.into_raw_vec()).unwrap();
+    //     corn_f_image.save(format!("./out/corn_f_{i}.png")).unwrap();
+    // }
 
     let r_t: Array2<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/type_{i}.npy"
@@ -245,6 +261,46 @@ fn get_lsun_res() {
             let max_res = maximum::<f32, _>(&(&corn_f.slice(s![.., .., 6]) - &a), &zeros);
             corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
         }
+        2 => {
+            let corn_t = corn_f.slice(s![.., .., 1]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 7]).to_owned();
+            corn_f.slice_mut(s![.., .., 1]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 7]).assign(&corn_t);
+
+            let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 6]).to_owned();
+            corn_f.slice_mut(s![.., .., 0]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 6]).assign(&corn_t);
+
+            let corn_t = corn_f.slice(s![.., .., 2]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 4]).to_owned();
+            corn_f.slice_mut(s![.., .., 2]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 4]).assign(&corn_t);
+
+            let zeros = Array::zeros((im_w, im_h));
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 0]).to_owned() - corn.slice(s![.., .., 1]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 0]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 6]).to_owned() - corn.slice(s![.., .., 7]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 6]).assign(&max_res);
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 0]).to_owned() - corn_f.slice(s![.., .., 1]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 0]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 6]).to_owned() - corn_f.slice(s![.., .., 7]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
+        }
         5 => {
             let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
             let corn_b = corn_f.slice(s![.., .., 7]).to_owned();
@@ -309,15 +365,34 @@ fn get_lsun_res() {
 
     // Find corner
     let mut point: Vec<Vec<usize>> = vec![];
+    let mut ctr = 0;
     for corner_map in room_t.cornermap.iter() {
         let corn_idx = (corner_map - 1) as usize;
 
         let mut mp: Array2<f32> =
-            &corn.slice(s![.., .., corn_idx]) + &corn_f.slice(s![.., .., corn_idx]);
+            &corn.slice(s![.., .., corn_idx]) + &corn_f.slice(s![.., ..;-1, corn_idx]);
         mp.slice_mut(s![.., 0]).fill(0.0);
         mp.slice_mut(s![.., im_w - 1]).fill(0.0);
         mp.slice_mut(s![0, ..]).fill(0.0);
         mp.slice_mut(s![im_h - 1, ..]).fill(0.0);
+
+        // {
+        //     let corn = corn.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
+        //     let corn_image = GrayImage::from_vec(512, 512, corn.into_raw_vec()).unwrap();
+        //     corn_image.save(format!("./out/corn_x_{ctr}.png")).unwrap();
+        // }
+
+        // {
+        //     let corn_f = corn_f.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
+        //     let corn_f_image = GrayImage::from_vec(512, 512, corn_f.into_raw_vec()).unwrap();
+        //     corn_f_image.save(format!("./out/corn_f_x_{ctr}.png")).unwrap();
+        // }
+
+        // {
+        //     let corn_f = corn_f.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
+        //     let corn_f_image = GrayImage::from_vec(512, 512, corn_f.into_raw_vec()).unwrap();
+        //     corn_f_image.save(format!("./out/corn_f_x_{ctr}.png")).unwrap();
+        // }
 
         let mut mp_msk = Array::from_elem((im_h, im_w), 0.);
 
@@ -444,6 +519,26 @@ fn get_lsun_res() {
                     );
                 }
             },
+            2 => {
+                match corner_map {
+                    2 | 8 => {
+                        mp_msk = edg
+                            .slice(s![.., .., 0])
+                            .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                    }
+                    5 | 3 | 1 | 7 => {
+                        mp_msk = edg
+                            .slice(s![.., .., 1])
+                            .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                    }
+                    _ => {
+                        panic!(
+                            "Unexpected corner map {} for room type {} not supported yet!",
+                            corner_map, room_t.typeid
+                        );
+                    }
+                }
+            }
             5 => {
                 match corner_map {
                     7 => {
@@ -500,7 +595,28 @@ fn get_lsun_res() {
             }
         }
 
+
+        // ctr += 1;
+        // {
+        //
+        //     let mp = mp.mapv(|f| (f * 255.) as u8);
+        //     let mp_image = GrayImage::from_vec(512, 512, mp.into_raw_vec()).unwrap();
+        //     mp_image.save(format!("./out/mp_{ctr}.png")).unwrap();
+        // }
+
         mp *= &mp_msk;
+
+        // {
+        //
+        //     let mp = mp.mapv(|f| (f * 255.) as u8);
+        //     let mp_image = GrayImage::from_vec(512, 512, mp.into_raw_vec()).unwrap();
+        //     mp_image.save(format!("./out/mp_post_{ctr}.png")).unwrap();
+        //
+        //     let mp_msk = mp_msk.mapv(|f| (f * 255.) as u8);
+        //     let mp_msk_image = GrayImage::from_vec(512, 512, mp_msk.into_raw_vec()).unwrap();
+        //
+        //     mp_msk_image.save(format!("./out/mp_msk_{ctr}.png")).unwrap();
+        // }
 
         let (pt_x, pt_y) = (mp / 2.).argmax().unwrap();
         point.push(vec![pt_x, pt_y]);
@@ -670,6 +786,7 @@ fn get_lsun_res() {
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![5, ..]).assign(&x.t());
         }
+        2 => (),
         5 => {
             let mut line_1 = polyfit(
                 &[point[(0, 0)] as f32, point[(1, 0)] as f32],
