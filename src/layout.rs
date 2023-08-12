@@ -47,10 +47,16 @@ pub const ROOM_TYPES: Lazy<Vec<RoomLayoutType>> = Lazy::new(|| {
             cornermap: vec![1, 7, 3, 5],
             lines: array![[1, 2], [3, 4]],
         },
+        // FIXME: for now we parse room type 7 as room type 1, so copy its data
+        // RoomLayoutType {
+        //     typeid: 7,
+        //     cornermap: vec![],
+        //     lines: array![[1, 2], [3, 4]],
+        // },
         RoomLayoutType {
             typeid: 7,
-            cornermap: vec![],
-            lines: array![[1, 2], [3, 4]],
+            cornermap: vec![3, 1, 4, 5, 7, 6],
+            lines: array![[1, 2], [1, 3], [1, 4], [4, 5], [4, 6]],
         },
         RoomLayoutType {
             typeid: 8,

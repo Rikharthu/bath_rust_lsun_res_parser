@@ -26,7 +26,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     // let i = 1063;
     // let i = 10;
     // let i = 105;
-    let i = 109;
+    let i = 1076;
 
     let im_h = 512usize;
     let im_w = 512usize;
@@ -88,6 +88,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     let r_t = r_t.mean_axis(Axis(0)).unwrap();
     let record_id = r_t.argmax().unwrap() as usize;
 
+    // FIXME: we parse room type 7 as room type 1
     let room_t = &(*ROOM_TYPES)[record_id];
 
     match room_t.typeid {
@@ -188,7 +189,8 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
             let max_res = maximum::<f32, _>(&(&corn_f.slice(s![.., .., 6]) - &a), &zeros);
             corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
         }
-        1 => {
+        // FIXME: Since room type 7 is not implemented in Matlab, will parse it as room type 1
+        1 | 7 => {
             let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
             let corn_b = corn_f.slice(s![.., .., 6]).to_owned();
             corn_f.slice_mut(s![.., .., 0]).assign(&corn_b);
@@ -471,7 +473,12 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
             corn_f.slice_mut(s![.., .., 4]).assign(&max_res);
         }
         7 => (), // Not implemented in Matlab code
-        8 => (), // Not implemented in Matlab code
+        8 => {
+            let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 6]).to_owned();
+            corn_f.slice_mut(s![.., .., 0]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 6]).assign(&corn_t);
+        } // FIXME: Not implemented in Matlab code, tried re-implemented on my own
         9 => {
             let corn_t = corn_f.slice(s![.., .., 2]).to_owned();
             let corn_b = corn_f.slice(s![.., .., 4]).to_owned();
@@ -569,7 +576,8 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                     });
                 }
             },
-            1 => match corner_map {
+            // FIXME: Since room type 7 is not implemented in Matlab, will parse it as room type 1
+            1 | 7 => match corner_map {
                 7 | 1 => {
                     mp_msk = edg
                         .slice(s![.., .., 1])
@@ -787,7 +795,19 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 }
             },
             7 => (), // No corners
-            8 => (), // Not implemented in Matlab
+            8 => match corner_map {
+                1 | 7 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 0]) // Ceiling seems to be in R (first) channel
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
+                }
+            }, // Not implemented in Matlab, tried on my own
             9 => match corner_map {
                 5 | 3 => {
                     mp_msk = edg
@@ -917,7 +937,8 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![7, ..]).assign(&x.t());
         }
-        1 => {
+        // FIXME: Since room type 7 is not implemented in Matlab, will parse it as room type 1
+        1 | 7 => {
             let mut line_1 = polyfit(
                 &[point[(0, 0)] as f32, point[(1, 0)] as f32],
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
@@ -1193,7 +1214,31 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
             point_ref.slice_mut(s![3, ..]).assign(&x.t());
         }
         7 => (), // Not implemented in Matlab code
-        8 => (), // Not implemented in Matlab code
+        8 => {
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(1, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(1, 1)] as f32],
+                1,
+            )
+            .unwrap();
+            line_1.reverse();
+
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![-100., -100. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![0, ..]).assign(&x.t());
+
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(1, 0)] as f32, point[(1, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![10000., 10000. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![1, ..]).assign(&x.t());
+        } // TODO: Not implemented in Matlab code, tried implementing on my own
         9 => {
             let mut line_1 = polyfit(
                 &[point[(0, 0)] as f32, point[(1, 0)] as f32],
@@ -1256,6 +1301,12 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     };
 
     let lines = get_segmentation(data);
+
+    // FIXME: We parse room type 7 as type 1, thus select only lines 1 and 3
+    if record_id == 7 {
+        let lines = vec![lines[1], lines[3]];
+        return Ok(lines);
+    }
 
     Ok(lines)
 }
