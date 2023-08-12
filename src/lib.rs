@@ -2,6 +2,7 @@ mod error;
 mod layout;
 mod util;
 
+use crate::error::ParseError;
 use crate::layout::{LayoutData, ROOM_TYPES};
 use crate::util::image_to_array3;
 use image::{GrayImage, Rgb, RgbImage};
@@ -14,13 +15,18 @@ use polyfit_rs::polyfit_rs::polyfit;
 use std::ops::Deref;
 use std::path::PathBuf;
 
-fn get_lsun_res() {
+pub type Point = (i32, i32);
+
+pub type Line = (Point, Point);
+
+fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     // let i = 100;
     // let i = 12;
     // let i = 131;
     // let i = 1063;
     // let i = 10;
-    let i = 105;
+    // let i = 105;
+    let i = 109;
 
     let im_h = 512usize;
     let im_w = 512usize;
@@ -48,22 +54,14 @@ fn get_lsun_res() {
     assert_eq!(edg.height(), im_h as u32);
 
     let samples = edg.as_flat_samples();
-    println!("Layout: {:?}", samples.layout);
-    // let im = Array3::from_shape_vec((im_h, im_w, 3), im.to_vec()).unwrap();
-    // let edg = Array3::from_shape_vec((im_h, im_w, 3), edg.to_vec()).unwrap();
-    //
-    //
-    // println!("{:?}", edg[(101, 20, 0)]);
 
     let edg = image_to_array3(edg).unwrap();
-    println!("{:?}", edg[(101, 20, 0)]);
 
     let corn: Array3<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_{i}.npy"
     ))
     .unwrap();
     let mut corn = corn.permuted_axes([1, 2, 0]); // CHW -> HWC
-    println!("corn shape: {:?}", corn.shape());
 
     // for i in 0..8 {
     //     let corn = corn.slice(s![.., .., i]).to_owned();
@@ -77,7 +75,6 @@ fn get_lsun_res() {
     ))
     .unwrap();
     let mut corn_f = corn_f.permuted_axes([1, 2, 0]); // CHW -> HWC
-    println!("corn_f shape: {:?}", corn_f.shape());
 
     // for i in 0..8 {
     //     let corn_f = corn_f.slice(s![.., .., i]).to_owned();
@@ -92,17 +89,8 @@ fn get_lsun_res() {
     .unwrap();
     let r_t = r_t.mean_axis(Axis(0)).unwrap();
     let mut record_id = r_t.argmax().unwrap() as usize;
-    println!("r_t: {r_t:?}");
-    println!("record_id: {record_id:?}");
-
-    // FIXME: our workaround to parse unimplemented room types as another room type
-    // let actual_record_id = record_id;
-    // if record_id == 7 {
-    //     record_id = 1;
-    // }
 
     let room_t = &(*ROOM_TYPES)[record_id];
-    println!("room_t: {room_t:?}");
 
     match room_t.typeid {
         0 => {
@@ -492,8 +480,9 @@ fn get_lsun_res() {
             corn_f.slice_mut(s![.., .., 2]).assign(&corn_b);
             corn_f.slice_mut(s![.., .., 4]).assign(&corn_t);
         }
+        10 => (), // Do nothing
         _ => {
-            panic!("Room type {} not supported yet!", room_t.typeid);
+            return Err(ParseError::UnsupportedRoomType(room_t.typeid));
         }
     }
 
@@ -508,24 +497,6 @@ fn get_lsun_res() {
         mp.slice_mut(s![.., im_w - 1]).fill(0.0);
         mp.slice_mut(s![0, ..]).fill(0.0);
         mp.slice_mut(s![im_h - 1, ..]).fill(0.0);
-
-        // {
-        //     let corn = corn.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
-        //     let corn_image = GrayImage::from_vec(512, 512, corn.into_raw_vec()).unwrap();
-        //     corn_image.save(format!("./out/corn_x_{ctr}.png")).unwrap();
-        // }
-
-        // {
-        //     let corn_f = corn_f.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
-        //     let corn_f_image = GrayImage::from_vec(512, 512, corn_f.into_raw_vec()).unwrap();
-        //     corn_f_image.save(format!("./out/corn_f_x_{ctr}.png")).unwrap();
-        // }
-
-        // {
-        //     let corn_f = corn_f.slice(s![.., .., corn_idx]).to_owned().mapv(|f| (f * 255.) as u8);
-        //     let corn_f_image = GrayImage::from_vec(512, 512, corn_f.into_raw_vec()).unwrap();
-        //     corn_f_image.save(format!("./out/corn_f_x_{ctr}.png")).unwrap();
-        // }
 
         let mut mp_msk = Array::from_elem((im_h, im_w), 0.);
 
@@ -588,10 +559,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             1 => match corner_map {
@@ -650,10 +621,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             2 => match corner_map {
@@ -668,10 +639,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             3 => match corner_map {
@@ -686,10 +657,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             4 => match corner_map {
@@ -724,10 +695,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             5 => {
@@ -774,10 +745,10 @@ fn get_lsun_res() {
                             .mapv(|x| (x as f32 > threshold) as u8 as f32);
                     }
                     _ => {
-                        panic!(
-                            "Unexpected corner map {} for room type {} not supported yet!",
-                            corner_map, room_t.typeid
-                        );
+                        return Err(ParseError::UnexpectedCornerMapForRoomType {
+                            corner_map: *corner_map,
+                            room_type: room_t.typeid,
+                        });
                     }
                 }
             }
@@ -793,10 +764,10 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             7 => (), // No corners
@@ -808,14 +779,27 @@ fn get_lsun_res() {
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
-                    panic!(
-                        "Unexpected corner map {} for room type {} not supported yet!",
-                        corner_map, room_t.typeid
-                    );
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
+                }
+            },
+            10 => match corner_map {
+                5 | 7 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedCornerMapForRoomType {
+                        corner_map: *corner_map,
+                        room_type: room_t.typeid,
+                    });
                 }
             },
             _ => {
-                panic!("Room type {} not supported yet!", room_t.typeid);
+                return Err(ParseError::UnsupportedRoomType(room_t.typeid));
             }
         }
 
@@ -827,10 +811,8 @@ fn get_lsun_res() {
 
     let point =
         Array2::from_shape_vec((point.len(), 2), point.into_iter().flatten().collect()).unwrap();
-    println!("point: {point:?}");
 
     let point_res = point.slice(s![.., ..;-1]);
-    println!("point_res: {point_res:?}");
 
     // We skip the cor_res scaling, assume that input image is of width 512. Rescaling will be handled later.
     let mut point_ref_res = point_res.into_owned();
@@ -842,12 +824,10 @@ fn get_lsun_res() {
     point_ref_res
         .slice_mut(s![.., 1])
         .mapv_inplace(|v| v.clamp(0, im_res.0));
-    println!("point_ref_res: {point_ref_res:?}");
 
     // Refine point
     let mut point: Array2<usize> = point_ref_res;
     let mut point_ref: Array2<f32> = point.mapv(|x| x as f32).to_owned();
-    println!("point: {point:?}");
 
     let p: Array2<f32> = array![
         [0., 0.],
@@ -856,10 +836,8 @@ fn get_lsun_res() {
         [im_res.1 as f32 + 0.01, 0.]
     ];
     let mut p = p.t().as_standard_layout().into_owned();
-    println!("p: {p:?}");
 
     let p = concatenate![Axis(1), p, p.slice(s![.., 0, NewAxis])];
-    println!("p: {p:?}");
 
     match room_t.typeid {
         0 => {
@@ -1148,8 +1126,6 @@ fn get_lsun_res() {
                 .assign(&array![10000., 10000. * line_1[0] + line_1[1]]);
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![5, ..]).assign(&x.t());
-
-            println!("point_ref: {point_ref:?}");
         }
         6 => {
             let mut line_1 = polyfit(
@@ -1227,6 +1203,31 @@ fn get_lsun_res() {
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![1, ..]).assign(&x.t());
         }
+        10 => {
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(1, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(1, 1)] as f32],
+                1,
+            )
+            .unwrap();
+            line_1.reverse();
+
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![(1. - line_1[1]) / line_1[0], -1.]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![0, ..]).assign(&x.t());
+
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![(10000. - line_1[1]) / line_1[0], 10000.]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![1, ..]).assign(&x.t());
+        }
         _ => {
             todo!("Unhandled room type {}", room_t.typeid);
         }
@@ -1239,34 +1240,11 @@ fn get_lsun_res() {
     };
 
     let lines = get_segmentation(data);
-    println!("lines: {lines:?}");
 
-    let mut lineplot = RgbImage::from_pixel(im_res.0 as u32, im_res.1 as u32, Rgb::from([0, 0, 0]));
-
-    // TODO: create colors array and zip it with lines, so each line has its own color
-    let colors = vec![
-        Rgb::from([255, 0, 0]),     // red
-        Rgb::from([0, 255, 0]),     // green
-        Rgb::from([0, 0, 255]),     // blue
-        Rgb::from([255, 255, 0]),   // yellow
-        Rgb::from([255, 102, 178]), // pink
-        Rgb::from([102, 255, 255]), // cyan
-        Rgb::from([255, 255, 255]), // white
-        Rgb::from([255, 153, 51]),  // orange
-    ];
-    for (idx, ((x1, y1), (x2, y2))) in lines.iter().enumerate() {
-        let color = colors[idx];
-        imageproc::drawing::draw_line_segment_mut(
-            &mut lineplot,
-            (*x1 as f32, *y1 as f32),
-            (*x2 as f32, *y2 as f32),
-            color,
-        );
-    }
-    lineplot.save("./out/lineplot.png").unwrap();
+    Ok(lines)
 }
 
-fn get_segmentation(data: LayoutData) -> Vec<((i32, i32), (i32, i32))> {
+fn get_segmentation(data: LayoutData) -> Vec<Line> {
     if data.type_ == 11 {
         todo!("Return None");
     }
@@ -1275,16 +1253,12 @@ fn get_segmentation(data: LayoutData) -> Vec<((i32, i32), (i32, i32))> {
 
     let mut point = data.point;
     let lines = type_data.lines.clone();
-    println!("lines: {lines:?}");
 
     let point = point.mapv(|x| x as i32);
-    println!("point: {point:?}");
 
     let line_indices = lines.clone().mapv_into(|x| x - 1);
     let line_point_indices = line_indices.slice(s![.., 0]).to_owned();
-    println!("line_point_indices: {line_point_indices:?}");
     let mut pt1s = point.select(Axis(0), line_point_indices.as_slice().unwrap());
-    println!("lines: {lines:?}");
 
     pt1s.mapv_inplace(|p| if p < 0 { 0 } else { p });
     // TODO: check if it is really x, not y
@@ -1296,7 +1270,6 @@ fn get_segmentation(data: LayoutData) -> Vec<((i32, i32), (i32, i32))> {
     let res_y = data.resolution.1 as i32;
     pt1s.slice_mut(s![.., 1])
         .mapv_inplace(|y| y.clamp(0, res_y - 1));
-    println!("pt1s: {pt1s:?}");
 
     let line_point_indices = line_indices.slice(s![.., 1]).to_owned();
     let mut pt2s = point.select(Axis(0), line_point_indices.as_slice().unwrap());
@@ -1304,7 +1277,6 @@ fn get_segmentation(data: LayoutData) -> Vec<((i32, i32), (i32, i32))> {
         .mapv_inplace(|x| x.clamp(0, res_x - 1));
     pt2s.slice_mut(s![.., 1])
         .mapv_inplace(|y| y.clamp(0, res_y - 1));
-    println!("pt2s: {pt2s:?}");
 
     let num_lines = pt1s.shape()[0];
     let mut line_coords = vec![];
@@ -1358,60 +1330,43 @@ where
 fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
     let a = s1.slice(s![.., 0]).insert_axis(Axis(1));
     let m: Array2<f32> = p - &a;
-    println!("m: {m:?}");
 
     let b = &s1.slice(s![.., 1]).insert_axis(Axis(1)) - &a;
     let b: Array1<f32> = array![b[(0, 0)], b[(1, 0)]];
-    println!("b: {b:?}");
 
     let x: Array1<f32> = array![b[1], -b[0]].dot(&m);
-    println!("x: {x:?}");
 
     let sx = x.mapv(|x| x.signum());
-    println!("sx: {sx:?}");
 
     let ind: Array1<bool> = (&sx.slice(s![0..-1]) * &sx.slice(s![1..])).mapv(|x| x <= 0.);
-    println!("ind: {ind:?}");
 
     if ind.iter().any(|&x| x) {
-        println!("Any!");
         let ind: Vec<usize> = ind
             .indexed_iter()
             .filter(|(index, &x)| x)
             .map(|(index, _)| index)
             .collect();
-        println!("ind: {ind:?}");
 
         // TODO: this doesn't actually match the original python code as there 2D array is created and selected
         let ind_t: Vec<usize> = ind.iter().map(|x| *x + 1).collect();
         let x1 = x.clone().select(Axis(0), &ind);
         let x2 = x.clone().select(Axis(0), &ind_t);
-        println!("x1: {x1:?}");
-        println!("x2: {x2:?}");
 
         let d: Array1<f32> = &b / (b[0].powi(2) + b[1].powi(2));
-        println!("d: {d:?}");
 
         let m_ind = m.select(Axis(1), &ind);
-        println!("m_ind: {m_ind:?}");
         let y1 = d.dot(&m.select(Axis(1), &ind));
         let y2 = d.dot(&m.select(Axis(1), &ind_t));
-        println!("y1: {y1:?}");
-        println!("y2: {y2:?}");
 
         let dx: Array1<f32> = &x2 - &x1;
-        println!("dx: {dx:?}");
 
         // We won't bother with the degenerate case of dx=0 and x1=0
         let y: Array1<f32> = (&y1 * &x2 - &y2 * &x1) / &dx;
-        println!("y: {y:?}");
 
         // Check if the cross point is inside the segment
         let ind: Array1<bool> = y.mapv(|y| y >= 0. && y < 1.);
-        println!("ind: {ind:?}");
 
         if ind.iter().any(|&x| x) {
-            println!("aaa");
             let where_ind: Vec<usize> = ind
                 .indexed_iter()
                 .filter(|(index, &x)| x)
@@ -1419,18 +1374,13 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
                 .collect();
             // TODO: not sure if this `remove_axis(Axis(1))` acts the same as unsqueeze in all cases
             let x: Array1<f32> = &a.remove_axis(Axis(1)) + &b * &y.select(Axis(0), &where_ind);
-            println!("x: {x:?}");
             return x;
         } else {
-            println!("bbb");
             let x = Array1::<f32>::zeros((2,));
-            println!("x: {x:?}");
             return x;
         }
     } else {
-        println!("ccc");
         let x = Array1::<f32>::zeros((2,));
-        println!("x: {x:?}");
         return x;
     }
 }
@@ -1446,7 +1396,36 @@ mod tests {
 
     #[test]
     fn get_lsun_res_works() {
-        get_lsun_res();
+        let lines = get_lsun_res().unwrap();
+
+        println!("lines: {lines:?}");
+
+        let im_res = (512, 512);
+
+        let mut lineplot =
+            RgbImage::from_pixel(im_res.0 as u32, im_res.1 as u32, Rgb::from([0, 0, 0]));
+
+        // TODO: create colors array and zip it with lines, so each line has its own color
+        let colors = vec![
+            Rgb::from([255, 0, 0]),     // red
+            Rgb::from([0, 255, 0]),     // green
+            Rgb::from([0, 0, 255]),     // blue
+            Rgb::from([255, 255, 0]),   // yellow
+            Rgb::from([255, 102, 178]), // pink
+            Rgb::from([102, 255, 255]), // cyan
+            Rgb::from([255, 255, 255]), // white
+            Rgb::from([255, 153, 51]),  // orange
+        ];
+        for (idx, ((x1, y1), (x2, y2))) in lines.iter().enumerate() {
+            let color = colors[idx];
+            imageproc::drawing::draw_line_segment_mut(
+                &mut lineplot,
+                (*x1 as f32, *y1 as f32),
+                (*x2 as f32, *y2 as f32),
+                color,
+            );
+        }
+        lineplot.save("./out/lineplot.png").unwrap();
     }
 
     #[test]
@@ -1484,24 +1463,19 @@ mod tests {
         let type_array = type_mat.find_by_name("x").unwrap();
         println!("{type_array:?}");
         let shape = type_array.size();
-        println!("Shape: {shape:?}");
 
         let data = match type_array.data().clone() {
             NumericData::Double { real, imag } => real,
             _ => panic!(),
         };
-        println!("{data:?}");
 
-        let data_arr = ndarray::Array2::from_shape_vec(
+        let data_arr = Array2::from_shape_vec(
             (shape[0], shape[1]).strides((1, 2)), // Stride 1 to pass to along axis[0], and 2 along axis[1]
             data,
         )
         .unwrap();
-        println!("Array: {data_arr:?}");
         let data_arr = data_arr.mean_axis(Axis(0)).unwrap();
-        println!("Mean: {data_arr:?}");
         let room_type = data_arr.argmax().unwrap() as usize;
-        println!("{room_type:?}");
     }
 
     #[test]
