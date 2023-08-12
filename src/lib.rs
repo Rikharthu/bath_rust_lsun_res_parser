@@ -4,7 +4,7 @@ mod util;
 
 use crate::layout::{LayoutData, ROOM_TYPES};
 use crate::util::image_to_array3;
-use image::{Rgb, RgbImage, GrayImage};
+use image::{GrayImage, Rgb, RgbImage};
 use ndarray::{
     array, concatenate, s, Array, Array1, Array2, Array3, ArrayBase, ArrayView2, Axis, Dimension,
     NewAxis, OwnedRepr, RawData, Zip,
@@ -17,7 +17,8 @@ use std::path::PathBuf;
 fn get_lsun_res() {
     // let i = 100;
     // let i = 12;
-    let i = 131;
+    // let i = 131;
+    let i = 1063;
 
     let im_h = 512usize;
     let im_w = 512usize;
@@ -301,6 +302,47 @@ fn get_lsun_res() {
             );
             corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
         }
+        3 => {
+            let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 7]).to_owned();
+            corn_f.slice_mut(s![.., .., 0]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 7]).assign(&corn_t);
+
+            let zeros = Array::zeros((im_w, im_h));
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 6]).to_owned() - corn.slice(s![.., .., 0]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 6]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 6]).to_owned() - corn_f.slice(s![.., .., 0]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 6]).to_owned() - corn.slice(s![.., .., 7]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 6]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 6]).to_owned() - corn_f.slice(s![.., .., 7]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 4]).to_owned() - corn.slice(s![.., .., 2]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 4]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 4]).to_owned() - corn_f.slice(s![.., .., 2]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 4]).assign(&max_res);
+        }
         5 => {
             let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
             let corn_b = corn_f.slice(s![.., .., 7]).to_owned();
@@ -519,26 +561,42 @@ fn get_lsun_res() {
                     );
                 }
             },
-            2 => {
-                match corner_map {
-                    2 | 8 => {
-                        mp_msk = edg
-                            .slice(s![.., .., 0])
-                            .mapv(|x| (x as f32 > threshold) as u8 as f32);
-                    }
-                    5 | 3 | 1 | 7 => {
-                        mp_msk = edg
-                            .slice(s![.., .., 1])
-                            .mapv(|x| (x as f32 > threshold) as u8 as f32);
-                    }
-                    _ => {
-                        panic!(
-                            "Unexpected corner map {} for room type {} not supported yet!",
-                            corner_map, room_t.typeid
-                        );
-                    }
+            2 => match corner_map {
+                2 | 8 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 0])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
-            }
+                5 | 3 | 1 | 7 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                _ => {
+                    panic!(
+                        "Unexpected corner map {} for room type {} not supported yet!",
+                        corner_map, room_t.typeid
+                    );
+                }
+            },
+            3 => match corner_map {
+                1 | 8 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 0])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                5 | 7 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                _ => {
+                    panic!(
+                        "Unexpected corner map {} for room type {} not supported yet!",
+                        corner_map, room_t.typeid
+                    );
+                }
+            },
             5 => {
                 match corner_map {
                     7 => {
@@ -594,7 +652,6 @@ fn get_lsun_res() {
                 panic!("Room type {} not supported yet!", room_t.typeid);
             }
         }
-
 
         // ctr += 1;
         // {
@@ -787,6 +844,52 @@ fn get_lsun_res() {
             point_ref.slice_mut(s![5, ..]).assign(&x.t());
         }
         2 => (),
+        3 => {
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(1, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(1, 1)] as f32],
+                1,
+            )
+            .unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![-100., -100. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![1, ..]).assign(&x.t());
+
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(3, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(3, 1)] as f32],
+                1,
+            )
+            .unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![100000., 100000. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![3, ..]).assign(&x.t());
+
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(2, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(2, 1)] as f32],
+                1,
+            )
+            .unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![(10000. - line_1[1]) / line_1[0], 10000.]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![2, ..]).assign(&x.t());
+        }
         5 => {
             let mut line_1 = polyfit(
                 &[point[(0, 0)] as f32, point[(1, 0)] as f32],
