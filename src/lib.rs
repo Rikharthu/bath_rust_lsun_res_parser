@@ -5,10 +5,10 @@ mod util;
 use crate::error::ParseError;
 use crate::layout::{LayoutData, ROOM_TYPES};
 use crate::util::image_to_array3;
-use image::{GrayImage, Rgb, RgbImage};
+use image::{Rgb, RgbImage};
 use ndarray::{
     array, concatenate, s, Array, Array1, Array2, Array3, ArrayBase, ArrayView2, Axis, Dimension,
-    NewAxis, OwnedRepr, RawData, Zip,
+    NewAxis, OwnedRepr, Zip,
 };
 use ndarray_stats::QuantileExt;
 use polyfit_rs::polyfit_rs::polyfit;
@@ -53,8 +53,6 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     assert_eq!(edg.width(), im_w as u32);
     assert_eq!(edg.height(), im_h as u32);
 
-    let samples = edg.as_flat_samples();
-
     let edg = image_to_array3(edg).unwrap();
 
     let corn: Array3<f32> = ndarray_npy::read_npy(format!(
@@ -88,7 +86,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     ))
     .unwrap();
     let r_t = r_t.mean_axis(Axis(0)).unwrap();
-    let mut record_id = r_t.argmax().unwrap() as usize;
+    let record_id = r_t.argmax().unwrap() as usize;
 
     let room_t = &(*ROOM_TYPES)[record_id];
 
@@ -522,10 +520,13 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                     let (_pt_y, pt_x) = mp_t.argmax().unwrap();
 
                     mp_msk
-                        .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                        .slice_mut(s![.., ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)])
                         .fill(0.);
                     mp_msk
-                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .slice_mut(s![
+                            ..,
+                            (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                        ])
                         .fill(0.);
                 }
                 7 => {
@@ -542,10 +543,13 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                     let (_pt_y, pt_x) = mp_t.argmax().unwrap();
 
                     mp_msk
-                        .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                        .slice_mut(s![.., ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)])
                         .fill(0.);
                     mp_msk
-                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .slice_mut(s![
+                            ..,
+                            (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                        ])
                         .fill(0.);
                 }
                 8 | 2 => {
@@ -588,11 +592,14 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                         .slice_mut(s![
                             ..,
                             // Use max of pt_x vs.50 to prevent subtraction overflow
-                            ..(usize::max(usize::max(pt_x, 50) - 50, 1) + 1)
+                            ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)
                         ])
                         .fill(0.);
                     mp_msk
-                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .slice_mut(s![
+                            ..,
+                            (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                        ])
                         .fill(0.);
                 }
                 5 => {
@@ -609,10 +616,13 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                     let (_pt_y, pt_x) = mp_t.argmax().unwrap();
 
                     mp_msk
-                        .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                        .slice_mut(s![.., ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)])
                         .fill(0.);
                     mp_msk
-                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .slice_mut(s![
+                            ..,
+                            (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                        ])
                         .fill(0.);
                 }
                 4 | 6 => {
@@ -683,10 +693,13 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                     let (_pt_y, pt_x) = mp_t.argmax().unwrap();
 
                     mp_msk
-                        .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                        .slice_mut(s![.., ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)])
                         .fill(0.);
                     mp_msk
-                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .slice_mut(s![
+                            ..,
+                            (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                        ])
                         .fill(0.);
                 }
                 3 | 6 => {
@@ -728,10 +741,13 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                         let (_pt_y, pt_x) = mp_t.argmax().unwrap();
 
                         mp_msk
-                            .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                            .slice_mut(s![.., ..((i64::max(pt_x as i64 - 50, 1) + 1) as usize)])
                             .fill(0.);
                         mp_msk
-                            .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                            .slice_mut(s![
+                                ..,
+                                (i64::min(pt_x as i64 + 50, im_w as i64 - 1) as usize)..
+                            ])
                             .fill(0.);
                     }
                     1 | 8 => {
@@ -835,7 +851,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
         [im_res.1 as f32 + 0.01, im_res.0 as f32 + 0.01],
         [im_res.1 as f32 + 0.01, 0.]
     ];
-    let mut p = p.t().as_standard_layout().into_owned();
+    let p = p.t().as_standard_layout().into_owned();
 
     let p = concatenate![Axis(1), p, p.slice(s![.., 0, NewAxis])];
 
@@ -1251,7 +1267,7 @@ fn get_segmentation(data: LayoutData) -> Vec<Line> {
 
     let type_data = &ROOM_TYPES[data.type_ as usize];
 
-    let mut point = data.point;
+    let point = data.point;
     let lines = type_data.lines.clone();
 
     let point = point.mapv(|x| x as i32);
@@ -1310,13 +1326,6 @@ where
         .map_collect(|a, b| if a >= b { *a } else { *b })
 }
 
-fn ravel_fortran_order<T>(array: &Array2<T>) -> Array1<T>
-where
-    T: Clone,
-{
-    array.t().iter().cloned().collect()
-}
-
 /// Check if a line segment s intersects with a polygon P.
 ///
 /// Parameters:
@@ -1343,7 +1352,7 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
     if ind.iter().any(|&x| x) {
         let ind: Vec<usize> = ind
             .indexed_iter()
-            .filter(|(index, &x)| x)
+            .filter(|(_index, &x)| x)
             .map(|(index, _)| index)
             .collect();
 
@@ -1354,7 +1363,6 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
 
         let d: Array1<f32> = &b / (b[0].powi(2) + b[1].powi(2));
 
-        let m_ind = m.select(Axis(1), &ind);
         let y1 = d.dot(&m.select(Axis(1), &ind));
         let y2 = d.dot(&m.select(Axis(1), &ind_t));
 
@@ -1369,7 +1377,7 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
         if ind.iter().any(|&x| x) {
             let where_ind: Vec<usize> = ind
                 .indexed_iter()
-                .filter(|(index, &x)| x)
+                .filter(|(_index, &x)| x)
                 .map(|(index, _)| index)
                 .collect();
             // TODO: not sure if this `remove_axis(Axis(1))` acts the same as unsqueeze in all cases
@@ -1389,8 +1397,7 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
 mod tests {
     use super::*;
     use matfile::{MatFile, NumericData};
-    use ndarray::{Array1, Axis, ShapeBuilder};
-    use ndarray_stats::QuantileExt;
+    use ndarray::{Array1, ShapeBuilder};
     use std::fs::File;
     use std::path::PathBuf;
 
@@ -1465,17 +1472,15 @@ mod tests {
         let shape = type_array.size();
 
         let data = match type_array.data().clone() {
-            NumericData::Double { real, imag } => real,
+            NumericData::Double { real, imag: _ } => real,
             _ => panic!(),
         };
 
-        let data_arr = Array2::from_shape_vec(
+        let _data_arr = Array2::from_shape_vec(
             (shape[0], shape[1]).strides((1, 2)), // Stride 1 to pass to along axis[0], and 2 along axis[1]
             data,
         )
         .unwrap();
-        let data_arr = data_arr.mean_axis(Axis(0)).unwrap();
-        let room_type = data_arr.argmax().unwrap() as usize;
     }
 
     #[test]
@@ -1483,7 +1488,6 @@ mod tests {
         let array1 = Array1::from_vec(vec![2, 3, 4]);
         let array2 = Array1::from_vec(vec![1, 5, 2]);
 
-        let result = maximum(&array1, &array2);
         let result = maximum(&array1, &array2);
 
         let expected = Array1::from_vec(vec![2, 5, 4]);
@@ -1502,7 +1506,7 @@ mod tests {
 
     #[test]
     fn fliplr_works() {
-        let mut array = array![
+        let array = array![
             [[1, 10], [2, 20], [3, 30]],
             [[4, 40], [5, 50], [6, 60]],
             [[7, 70], [8, 80], [9, 90]]
