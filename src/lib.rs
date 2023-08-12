@@ -25,7 +25,6 @@ fn get_lsun_res() {
     let im_h = 512usize;
     let im_w = 512usize;
 
-
     let im_res = (im_w, im_h);
 
     let results_dir =
@@ -62,7 +61,7 @@ fn get_lsun_res() {
     let corn: Array3<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_{i}.npy"
     ))
-        .unwrap();
+    .unwrap();
     let mut corn = corn.permuted_axes([1, 2, 0]); // CHW -> HWC
     println!("corn shape: {:?}", corn.shape());
 
@@ -76,7 +75,7 @@ fn get_lsun_res() {
     let corn_f: Array3<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_flip_{i}.npy"
     ))
-        .unwrap();
+    .unwrap();
     let mut corn_f = corn_f.permuted_axes([1, 2, 0]); // CHW -> HWC
     println!("corn_f shape: {:?}", corn_f.shape());
 
@@ -90,7 +89,7 @@ fn get_lsun_res() {
     let r_t: Array2<f32> = ndarray_npy::read_npy(format!(
         "/Users/richardkuodis/development/Bath/LayoutNet/out/type_{i}.npy"
     ))
-        .unwrap();
+    .unwrap();
     let r_t = r_t.mean_axis(Axis(0)).unwrap();
     let mut record_id = r_t.argmax().unwrap() as usize;
     println!("r_t: {r_t:?}");
@@ -101,7 +100,6 @@ fn get_lsun_res() {
     // if record_id == 7 {
     //     record_id = 1;
     // }
-
 
     let room_t = &(*ROOM_TYPES)[record_id];
     println!("room_t: {room_t:?}");
@@ -803,21 +801,19 @@ fn get_lsun_res() {
             },
             7 => (), // No corners
             8 => (), // Not implemented in Matlab
-            9 => {
-                match corner_map {
-                    5 | 3 => {
-                        mp_msk = edg
-                            .slice(s![.., .., 2])
-                            .mapv(|x| (x as f32 > threshold) as u8 as f32);
-                    }
-                    _ => {
-                        panic!(
-                            "Unexpected corner map {} for room type {} not supported yet!",
-                            corner_map, room_t.typeid
-                        );
-                    }
+            9 => match corner_map {
+                5 | 3 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 2])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
-            }
+                _ => {
+                    panic!(
+                        "Unexpected corner map {} for room type {} not supported yet!",
+                        corner_map, room_t.typeid
+                    );
+                }
+            },
             _ => {
                 panic!("Room type {} not supported yet!", room_t.typeid);
             }
@@ -872,7 +868,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -887,7 +883,7 @@ fn get_lsun_res() {
                 &[point[(2, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -902,7 +898,7 @@ fn get_lsun_res() {
                 &[point[(4, 1)] as f32, point[(5, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -917,7 +913,7 @@ fn get_lsun_res() {
                 &[point[(6, 1)] as f32, point[(7, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -933,7 +929,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -948,7 +944,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -968,7 +964,7 @@ fn get_lsun_res() {
                 &[point[(3, 1)] as f32, point[(4, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -983,7 +979,7 @@ fn get_lsun_res() {
                 &[point[(3, 1)] as f32, point[(5, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1000,7 +996,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1015,7 +1011,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1030,7 +1026,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1046,7 +1042,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1065,7 +1061,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1080,7 +1076,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1096,7 +1092,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             // polyfit_rs order is reverse to that of Python's numpy
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1112,7 +1108,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             // polyfit_rs order is reverse to that of Python's numpy
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1128,7 +1124,7 @@ fn get_lsun_res() {
                 &[point[(3, 1)] as f32, point[(4, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1143,7 +1139,7 @@ fn get_lsun_res() {
                 &[point[(3, 1)] as f32, point[(5, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1161,7 +1157,7 @@ fn get_lsun_res() {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1185,7 +1181,7 @@ fn get_lsun_res() {
                 &[point[(2, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-                .unwrap();
+            .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1211,7 +1207,8 @@ fn get_lsun_res() {
                 &[point[(0, 0)] as f32, point[(1, 0)] as f32],
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
-            ).unwrap();
+            )
+            .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1331,10 +1328,10 @@ fn maximum<T, D>(
     array1: &ArrayBase<OwnedRepr<T>, D>,
     array2: &ArrayBase<OwnedRepr<T>, D>,
 ) -> Array<T, D>
-    where
-        D: Dimension,
-        T: PartialOrd + Copy,
-        for<'a> &'a T: Deref<Target=T>,
+where
+    D: Dimension,
+    T: PartialOrd + Copy,
+    for<'a> &'a T: Deref<Target = T>,
 {
     Zip::from(array1)
         .and(array2)
@@ -1342,8 +1339,8 @@ fn maximum<T, D>(
 }
 
 fn ravel_fortran_order<T>(array: &Array2<T>) -> Array1<T>
-    where
-        T: Clone,
+where
+    T: Clone,
 {
     array.t().iter().cloned().collect()
 }
@@ -1426,13 +1423,13 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
             return x;
         } else {
             println!("bbb");
-            let x = Array1::<f32>::zeros((2, ));
+            let x = Array1::<f32>::zeros((2,));
             println!("x: {x:?}");
             return x;
         }
     } else {
         println!("ccc");
-        let x = Array1::<f32>::zeros((2, ));
+        let x = Array1::<f32>::zeros((2,));
         println!("x: {x:?}");
         return x;
     }
@@ -1499,7 +1496,7 @@ mod tests {
             (shape[0], shape[1]).strides((1, 2)), // Stride 1 to pass to along axis[0], and 2 along axis[1]
             data,
         )
-            .unwrap();
+        .unwrap();
         println!("Array: {data_arr:?}");
         let data_arr = data_arr.mean_axis(Axis(0)).unwrap();
         println!("Mean: {data_arr:?}");
