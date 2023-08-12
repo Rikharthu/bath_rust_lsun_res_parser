@@ -18,7 +18,8 @@ fn get_lsun_res() {
     // let i = 100;
     // let i = 12;
     // let i = 131;
-    let i = 1063;
+    // let i = 1063;
+    let i = 10;
 
     let im_h = 512usize;
     let im_w = 512usize;
@@ -343,6 +344,47 @@ fn get_lsun_res() {
             );
             corn_f.slice_mut(s![.., .., 4]).assign(&max_res);
         }
+        4 => {
+            let corn_t = corn_f.slice(s![.., .., 2]).to_owned();
+            let corn_b = corn_f.slice(s![.., .., 5]).to_owned();
+            corn_f.slice_mut(s![.., .., 2]).assign(&corn_b);
+            corn_f.slice_mut(s![.., .., 5]).assign(&corn_t);
+
+            let zeros = Array::zeros((im_w, im_h));
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 4]).to_owned() - corn.slice(s![.., .., 2]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 4]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 4]).to_owned() - corn_f.slice(s![.., .., 2]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 4]).assign(&max_res);
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 4]).to_owned() - corn.slice(s![.., .., 5]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 4]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 4]).to_owned() - corn_f.slice(s![.., .., 5]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 4]).assign(&max_res);
+
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn.slice(s![.., .., 6]).to_owned() - corn.slice(s![.., .., 0]).to_owned()),
+            );
+            corn.slice_mut(s![.., .., 6]).assign(&max_res);
+            let max_res = maximum::<f32, _>(
+                &zeros,
+                &(corn_f.slice(s![.., .., 6]).to_owned() - corn_f.slice(s![.., .., 0]).to_owned()),
+            );
+            corn_f.slice_mut(s![.., .., 6]).assign(&max_res);
+        }
         5 => {
             let corn_t = corn_f.slice(s![.., .., 0]).to_owned();
             let corn_b = corn_f.slice(s![.., .., 7]).to_owned();
@@ -588,6 +630,44 @@ fn get_lsun_res() {
                 5 | 7 => {
                     mp_msk = edg
                         .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                _ => {
+                    panic!(
+                        "Unexpected corner map {} for room type {} not supported yet!",
+                        corner_map, room_t.typeid
+                    );
+                }
+            },
+            4 => match corner_map {
+                5 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+                }
+                7 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 1])
+                        .mapv(|x| (x as f32 > threshold) as u8 as f32);
+
+                    let mut mp_t: Array2<f32> = (corn.slice(s![.., .., 4]).to_owned()
+                        + &corn_f.slice(s![.., ..;-1, 4]))
+                        / 2.;
+                    pad_zeros(&mut mp_t);
+                    mp_t *= &mp_msk;
+
+                    let (_pt_y, pt_x) = mp_t.argmax().unwrap();
+
+                    mp_msk
+                        .slice_mut(s![.., ..(usize::max(pt_x - 50, 1) + 1)])
+                        .fill(0.);
+                    mp_msk
+                        .slice_mut(s![.., usize::min(pt_x + 50, im_w - 1)..])
+                        .fill(0.);
+                }
+                3 | 6 => {
+                    mp_msk = edg
+                        .slice(s![.., .., 2])
                         .mapv(|x| (x as f32 > threshold) as u8 as f32);
                 }
                 _ => {
@@ -889,6 +969,54 @@ fn get_lsun_res() {
                 .assign(&array![(10000. - line_1[1]) / line_1[0], 10000.]);
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![2, ..]).assign(&x.t());
+        }
+        4 => {
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(1, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(1, 1)] as f32],
+                1,
+            )
+                .unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![-100., -100. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![1, ..]).assign(&x.t());
+
+            if point[(0, 0)] == point[(2, 0)]{
+                point[(0, 0)] = point[(0, 0)] + 1;
+            }
+
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(2, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(2, 1)] as f32],
+                1,
+            ).unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![(-1. - line_1[1]) / line_1[0], -1.]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![2, ..]).assign(&x.t());
+
+            let mut line_1 = polyfit(
+                &[point[(0, 0)] as f32, point[(3, 0)] as f32],
+                &[point[(0, 1)] as f32, point[(3, 1)] as f32],
+                1,
+            ).unwrap();
+            line_1.reverse();
+            let mut s1 = Array2::<f32>::zeros((2, 2));
+            s1.slice_mut(s![.., 0])
+                .assign(&array![point[(0, 0)] as f32, point[(0, 1)] as f32]);
+            s1.slice_mut(s![.., 1])
+                .assign(&array![10000., 10000. * line_1[0] + line_1[1]]);
+            let x = seg2poly(&s1.view(), &p.view());
+            point_ref.slice_mut(s![3, ..]).assign(&x.t());
         }
         5 => {
             let mut line_1 = polyfit(
