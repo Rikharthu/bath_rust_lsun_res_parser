@@ -19,46 +19,43 @@ pub type Point = (i32, i32);
 
 pub type Line = (Point, Point);
 
-fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
-    // let i = 100;
-    // let i = 12;
-    // let i = 131;
-    // let i = 1063;
-    // let i = 10;
-    // let i = 105;
-    let i = 1076;
-
+fn get_lsun_res(i: i32) -> Result<Vec<Line>, ParseError> {
     let im_h = 512usize;
     let im_w = 512usize;
 
     let im_res = (im_w, im_h);
 
+    // let results_dir =
+    //     PathBuf::from("/Users/richardkuodis/development/pytorch-layoutnet/res/lsun_tr_gt");
     let results_dir =
-        PathBuf::from("/Users/richardkuodis/development/pytorch-layoutnet/res/lsun_tr_gt");
+        PathBuf::from("/Users/richardkuodis/development/pytorch-layoutnet/out");
 
-    let im = image::open(results_dir.join("img").join(format!("{i}.png")))
+    // let im = image::open(results_dir.join("img").join(format!("{i}.png")))
+    //     .unwrap()
+    //     .to_rgb8();
+    // im.save("./out/im.png").unwrap();
+
+    // let edg = image::open(results_dir.join("edg").join(format!("{i}.png")))
+    let edg = image::open(results_dir.join(format!("edg_{i}.png")))
         .unwrap()
         .to_rgb8();
-    im.save("./out/im.png").unwrap();
-
-    let edg = image::open(results_dir.join("edg").join(format!("{i}.png")))
-        .unwrap()
-        .to_rgb8();
-    edg.save("./out/edg.png").unwrap();
+    // edg.save("./out/edg.png").unwrap();
 
     // TODO: convert RgbImage to Array3
 
-    assert_eq!(im.width(), im_w as u32);
-    assert_eq!(im.height(), im_h as u32);
+    // assert_eq!(im.width(), im_w as u32);
+    // assert_eq!(im.height(), im_h as u32);
     assert_eq!(edg.width(), im_w as u32);
     assert_eq!(edg.height(), im_h as u32);
 
     let edg = image_to_array3(edg).unwrap();
 
-    let corn: Array3<f32> = ndarray_npy::read_npy(format!(
-        "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_{i}.npy"
-    ))
-    .unwrap();
+    // let corn: Array3<f32> = ndarray_npy::read_npy(format!(
+    //     "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_{i}.npy"
+    // ))
+    //     .unwrap();
+    let corn: Array3<f32> = ndarray_npy::read_npy(results_dir.join(format!("cor_mat_{i}.npy")))
+        .unwrap();
     let mut corn = corn.permuted_axes([1, 2, 0]); // CHW -> HWC
 
     // for i in 0..8 {
@@ -68,10 +65,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     //     corn_image.save(format!("./out/corn_{i}.png")).unwrap();
     // }
 
-    let corn_f: Array3<f32> = ndarray_npy::read_npy(format!(
-        "/Users/richardkuodis/development/Bath/LayoutNet/out/cor_mat_flip_{i}.npy"
-    ))
-    .unwrap();
+    let corn_f: Array3<f32> = ndarray_npy::read_npy(results_dir.join(format!("cor_mat_flip_{i}.npy"))).unwrap();
     let mut corn_f = corn_f.permuted_axes([1, 2, 0]); // CHW -> HWC
 
     // for i in 0..8 {
@@ -81,10 +75,8 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     //     corn_f_image.save(format!("./out/corn_f_{i}.png")).unwrap();
     // }
 
-    let r_t: Array2<f32> = ndarray_npy::read_npy(format!(
-        "/Users/richardkuodis/development/Bath/LayoutNet/out/type_{i}.npy"
-    ))
-    .unwrap();
+    let r_t: Array2<f32> = ndarray_npy::read_npy(results_dir.join(format!("type_{i}.npy")))
+        .unwrap();
     let r_t = r_t.mean_axis(Axis(0)).unwrap();
     let record_id = r_t.argmax().unwrap() as usize;
 
@@ -882,7 +874,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -897,7 +889,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(2, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -912,7 +904,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(4, 1)] as f32, point[(5, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -927,7 +919,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(6, 1)] as f32, point[(7, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -944,7 +936,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -959,7 +951,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -969,40 +961,40 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
             let x = seg2poly(&s1.view(), &p.view());
             point_ref.slice_mut(s![2, ..]).assign(&x.t());
 
-            if point[(3, 0)] == point[(4, 0)] {
-                // FIXME: in Matlab and Python we add 0.01, but here `point` is of type usize
-                point[(4, 0)] = point[(4, 0)] + 1
-            }
+            // if point[(3, 0)] == point[(4, 0)] {
+            //     // FIXME: in Matlab and Python we add 0.01, but here `point` is of type usize
+            //     point[(4, 0)] = point[(4, 0)] + 1
+            // }
 
-            let mut line_1 = polyfit(
-                &[point[(3, 0)] as f32, point[(4, 0)] as f32],
-                &[point[(3, 1)] as f32, point[(4, 1)] as f32],
-                1,
-            )
-            .unwrap();
-            line_1.reverse();
-            let mut s1 = Array2::<f32>::zeros((2, 2));
-            s1.slice_mut(s![.., 0])
-                .assign(&array![point[(3, 0)] as f32, point[(3, 1)] as f32]);
-            s1.slice_mut(s![.., 1])
-                .assign(&array![(-1. - line_1[1]) / line_1[0], -1.]);
-            let x = seg2poly(&s1.view(), &p.view());
-            point_ref.slice_mut(s![4, ..]).assign(&x.t());
-
-            let mut line_1 = polyfit(
-                &[point[(3, 0)] as f32, point[(5, 0)] as f32],
-                &[point[(3, 1)] as f32, point[(5, 1)] as f32],
-                1,
-            )
-            .unwrap();
-            line_1.reverse();
-            let mut s1 = Array2::<f32>::zeros((2, 2));
-            s1.slice_mut(s![.., 0])
-                .assign(&array![point[(3, 0)] as f32, point[(3, 1)] as f32]);
-            s1.slice_mut(s![.., 1])
-                .assign(&array![100000., 100000. * line_1[0] + line_1[1]]);
-            let x = seg2poly(&s1.view(), &p.view());
-            point_ref.slice_mut(s![5, ..]).assign(&x.t());
+            // let mut line_1 = polyfit(
+            //     &[point[(3, 0)] as f32, point[(4, 0)] as f32],
+            //     &[point[(3, 1)] as f32, point[(4, 1)] as f32],
+            //     1,
+            // )
+            // .unwrap();
+            // line_1.reverse();
+            // let mut s1 = Array2::<f32>::zeros((2, 2));
+            // s1.slice_mut(s![.., 0])
+            //     .assign(&array![point[(3, 0)] as f32, point[(3, 1)] as f32]);
+            // s1.slice_mut(s![.., 1])
+            //     .assign(&array![(-1. - line_1[1]) / line_1[0], -1.]);
+            // let x = seg2poly(&s1.view(), &p.view());
+            // point_ref.slice_mut(s![4, ..]).assign(&x.t());
+            //
+            // let mut line_1 = polyfit(
+            //     &[point[(3, 0)] as f32, point[(5, 0)] as f32],
+            //     &[point[(3, 1)] as f32, point[(5, 1)] as f32],
+            //     1,
+            // )
+            // .unwrap();
+            // line_1.reverse();
+            // let mut s1 = Array2::<f32>::zeros((2, 2));
+            // s1.slice_mut(s![.., 0])
+            //     .assign(&array![point[(3, 0)] as f32, point[(3, 1)] as f32]);
+            // s1.slice_mut(s![.., 1])
+            //     .assign(&array![100000., 100000. * line_1[0] + line_1[1]]);
+            // let x = seg2poly(&s1.view(), &p.view());
+            // point_ref.slice_mut(s![5, ..]).assign(&x.t());
         }
         2 => (),
         3 => {
@@ -1011,7 +1003,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1026,7 +1018,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1041,7 +1033,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1057,7 +1049,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1076,7 +1068,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1091,7 +1083,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1107,7 +1099,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             // polyfit_rs order is reverse to that of Python's numpy
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1123,7 +1115,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(2, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             // polyfit_rs order is reverse to that of Python's numpy
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1139,7 +1131,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(3, 1)] as f32, point[(4, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1154,7 +1146,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(3, 1)] as f32, point[(5, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
             let mut s1 = Array2::<f32>::zeros((2, 2));
             s1.slice_mut(s![.., 0])
@@ -1170,7 +1162,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1194,7 +1186,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(2, 1)] as f32, point[(3, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1220,7 +1212,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1245,7 +1237,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1270,7 +1262,7 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
                 &[point[(0, 1)] as f32, point[(1, 1)] as f32],
                 1,
             )
-            .unwrap();
+                .unwrap();
             line_1.reverse();
 
             let mut s1 = Array2::<f32>::zeros((2, 2));
@@ -1303,10 +1295,10 @@ fn get_lsun_res() -> Result<Vec<Line>, ParseError> {
     let lines = get_segmentation(data);
 
     // FIXME: We parse room type 7 as type 1, thus select only lines 1 and 3
-    if record_id == 7 {
-        let lines = vec![lines[1], lines[3]];
-        return Ok(lines);
-    }
+    // if record_id == 7 {
+    //     let lines = vec![lines[1], lines[3]];
+    //     return Ok(lines);
+    // }
 
     Ok(lines)
 }
@@ -1367,10 +1359,10 @@ fn maximum<T, D>(
     array1: &ArrayBase<OwnedRepr<T>, D>,
     array2: &ArrayBase<OwnedRepr<T>, D>,
 ) -> Array<T, D>
-where
-    D: Dimension,
-    T: PartialOrd + Copy,
-    for<'a> &'a T: Deref<Target = T>,
+    where
+        D: Dimension,
+        T: PartialOrd + Copy,
+        for<'a> &'a T: Deref<Target=T>,
 {
     Zip::from(array1)
         .and(array2)
@@ -1435,11 +1427,11 @@ fn seg2poly(s1: &ArrayView2<f32>, p: &ArrayView2<f32>) -> Array1<f32> {
             let x: Array1<f32> = &a.remove_axis(Axis(1)) + &b * &y.select(Axis(0), &where_ind);
             return x;
         } else {
-            let x = Array1::<f32>::zeros((2,));
+            let x = Array1::<f32>::zeros((2, ));
             return x;
         }
     } else {
-        let x = Array1::<f32>::zeros((2,));
+        let x = Array1::<f32>::zeros((2, ));
         return x;
     }
 }
@@ -1451,17 +1443,81 @@ mod tests {
     use ndarray::{Array1, ShapeBuilder};
     use std::fs::File;
     use std::path::PathBuf;
+    use std::str::FromStr;
+
+    #[test]
+    fn process_lsun_results() {
+        let results_dir =
+            PathBuf::from("/Users/richardkuodis/development/pytorch-layoutnet/res/lsun_tr_gt");
+
+        let indices: Array1<i32> = ndarray_npy::read_npy(format!(
+            "/Users/richardkuodis/development/Bath/LayoutNet/out/indices.npy"
+        ))
+            .unwrap();
+
+        let out_dir = PathBuf::from("./out/lsun");
+        if out_dir.exists() {
+            std::fs::remove_dir_all(&out_dir).unwrap();
+        }
+        std::fs::create_dir_all(&out_dir).unwrap();
+
+        let colors = vec![
+            Rgb::from([255, 0, 0]),     // red
+            Rgb::from([0, 255, 0]),     // green
+            Rgb::from([0, 0, 255]),     // blue
+            Rgb::from([255, 255, 0]),   // yellow
+            Rgb::from([255, 102, 178]), // pink
+            Rgb::from([102, 255, 255]), // cyan
+            Rgb::from([255, 255, 255]), // white
+            Rgb::from([255, 153, 51]),  // orange
+        ];
+
+        for i in indices.iter() {
+            let lines = get_lsun_res(*i).unwrap();
+
+            let mut im = image::open(results_dir.join("img").join(format!("{i}.png")))
+                .unwrap()
+                .to_rgb8();
+
+            let r_t: Array2<f32> = ndarray_npy::read_npy(format!(
+                "/Users/richardkuodis/development/Bath/LayoutNet/out/type_{i}.npy"
+            )).unwrap();
+            let r_t = r_t.mean_axis(Axis(0)).unwrap();
+            let record_id = r_t.argmax().unwrap() as usize;
+
+            for (idx, ((x1, y1), (x2, y2))) in lines.iter().enumerate() {
+                let color = colors[idx];
+                imageproc::drawing::draw_line_segment_mut(
+                    &mut im,
+                    (*x1 as f32, *y1 as f32),
+                    (*x2 as f32, *y2 as f32),
+                    color,
+                );
+            }
+
+            let image_path = out_dir.join(format!("{record_id}_{i}.png"));
+            im.save(&image_path).unwrap();
+        }
+    }
 
     #[test]
     fn get_lsun_res_works() {
-        let lines = get_lsun_res().unwrap();
+        let results_dir = PathBuf::from_str("/Users/richardkuodis/development/pytorch-layoutnet/res/lsun_val").unwrap();
+
+        let i =2;
+
+        let lines = get_lsun_res(i).unwrap();
 
         println!("lines: {lines:?}");
 
         let im_res = (512, 512);
 
-        let mut lineplot =
-            RgbImage::from_pixel(im_res.0 as u32, im_res.1 as u32, Rgb::from([0, 0, 0]));
+        // let mut lineplot =
+        //     RgbImage::from_pixel(im_res.0 as u32, im_res.1 as u32, Rgb::from([0, 0, 0]));
+
+        let mut im = image::open(results_dir.join("img").join(format!("{i}.png")))
+                .unwrap()
+                .to_rgb8();
 
         // TODO: create colors array and zip it with lines, so each line has its own color
         let colors = vec![
@@ -1477,13 +1533,13 @@ mod tests {
         for (idx, ((x1, y1), (x2, y2))) in lines.iter().enumerate() {
             let color = colors[idx];
             imageproc::drawing::draw_line_segment_mut(
-                &mut lineplot,
+                &mut im,
                 (*x1 as f32, *y1 as f32),
                 (*x2 as f32, *y2 as f32),
                 color,
             );
         }
-        lineplot.save("./out/lineplot.png").unwrap();
+        im.save(format!("./out/{i}.png")).unwrap();
     }
 
     #[test]
@@ -1531,7 +1587,7 @@ mod tests {
             (shape[0], shape[1]).strides((1, 2)), // Stride 1 to pass to along axis[0], and 2 along axis[1]
             data,
         )
-        .unwrap();
+            .unwrap();
     }
 
     #[test]
