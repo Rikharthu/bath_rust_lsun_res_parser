@@ -16,6 +16,7 @@ pub type Point = (i32, i32);
 
 pub type Line = (Point, Point);
 
+#[derive(Clone, Debug)]
 pub struct RoomLayoutInfo {
     // TODO: better use enum
     pub room_type: u8,
