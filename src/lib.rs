@@ -16,12 +16,18 @@ pub type Point = (i32, i32);
 
 pub type Line = (Point, Point);
 
+pub struct RoomLayoutInfo {
+    // TODO: better use enum
+    pub room_type: u8,
+    pub lines: Vec<Line>,
+}
+
 pub fn parse_lsun_results(
     edges: Array3<f32>,
     corners: Array3<f32>,
     corners_flip: Array3<f32>,
     room_type: Array2<f32>,
-) -> Result<Vec<Line>, ParseError> {
+) -> Result<RoomLayoutInfo, ParseError> {
     let edges_shape = edges.shape();
     // CHW
     let im_h = edges_shape[1];
@@ -1258,7 +1264,10 @@ pub fn parse_lsun_results(
     //     return Ok(lines);
     // }
 
-    Ok(lines)
+    Ok(RoomLayoutInfo {
+        room_type: room_t.typeid,
+        lines,
+    })
 }
 
 fn get_segmentation(data: LayoutData) -> Vec<Line> {
@@ -1487,7 +1496,9 @@ mod tests {
 
         println!("edg shape: {:?}", edg.shape());
 
-        let lines = parse_lsun_results(edg, corn, corn_f, r_t).unwrap();
+        let lines = parse_lsun_results(edg, corn, corn_f, r_t).unwrap().lines;
+        // let lines = vec![((294, 167), (13, 0)), ((294, 167), (511, 85)), ((294, 167), (306, 343)), ((306, 343), (0, 491)), ((306, 343), (511, 410))];
+
         println!("lines: {lines:?}");
 
         // // let mut lineplot =
